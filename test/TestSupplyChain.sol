@@ -3,14 +3,14 @@ pragma solidity ^0.8.0;
 
 import "truffle/Assert.sol";
 import "truffle/DeployedAddresses.sol";
-import "../contracts/SupplyChain.sol";
+import "../contracts/SupplyChainMock.sol";
 //supply_chain.test
-contract TestSupplyChain {
+contract TestSupplyChainMock {
     uint public initialBalance = 80 ether;
-    SupplyChain private sp;
+    SupplyChainMock private sp;
 
     function beforeEach() public {
-        sp = new SupplyChain();
+        sp = new SupplyChainMock();
         sp.addItem("Test Item", 100, msg.sender);
     }
 

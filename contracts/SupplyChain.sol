@@ -7,7 +7,7 @@ contract SupplyChain {
 
   uint public skuCount;
 
-  mapping(uint => Item) private items;
+  mapping(uint => Item) public items;
 
   enum State {
     ForSale,
@@ -110,7 +110,7 @@ contract SupplyChain {
     owner = msg.sender;
   }
 
-  function addItem(string memory _name, uint _price, address _seller) public returns (bool) {
+  function addItem(string memory _name, uint _price) public returns (bool) {
     // 1. Create a new item and put in array
     // 2. Increment the skuCount by one
     // 3. Emit the appropriate event
@@ -123,7 +123,7 @@ contract SupplyChain {
       sku: skuCount,
       price: _price,
       state: State.ForSale,
-      seller: payable(_seller),
+      seller: payable(msg.sender),
       buyer: payable(address(0))
     });
 
@@ -147,14 +147,14 @@ contract SupplyChain {
   //    - check the value after the function is called to make 
   //      sure the buyer is refunded any excess ether sent. 
   // 6. call the event associated with this function!
-  function buyItem(uint _sku, address _buyer) public payable forSale(_sku) paidEnough(items[_sku].price) checkValue(_sku) {
-    require(_buyer != address(0), "Buy Item: Zero address");
+  function buyItem(uint _sku) public payable forSale(_sku) paidEnough(items[_sku].price) checkValue(_sku) {
+    //require(_buyer != address(0), "Buy Item: Zero address");
 
     Item memory item = items[_sku];
     
     item.seller.transfer(item.price);
     
-    item.buyer = payable(_buyer);
+    item.buyer = payable(msg.sender);
 
     item.state = State.Sold;
 
