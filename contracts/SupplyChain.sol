@@ -49,17 +49,17 @@ contract SupplyChain {
   // Create a modifer, `isOwner` that checks if the msg.sender is the owner of the contract
 
   modifier isOwner (address _address) {
-    require(owner == msg.sender);
+    require(owner == msg.sender, "Sender is not the owner");
     _;
   }
 
   modifier verifyCaller (address _address) { 
-    require (msg.sender == _address);
+    require (msg.sender == _address, "Sender is not the seller or buyer");
     _;
   }
 
   modifier paidEnough(uint _price) { 
-    require(msg.value >= _price);
+    require(msg.value >= _price, "Payment is not enough");
     _;
   }
 
@@ -83,66 +83,55 @@ contract SupplyChain {
 
   
   modifier forSale(uint _sku) {
-    require(items[_sku].state == State.ForSale);
-    require(items[_sku].price > 0);
+    require(items[_sku].state == State.ForSale, "This item is not for sale");
+    require(items[_sku].seller != address(0), "This item is not for sale");
     _;
   }
   
   modifier sold(uint _sku) {
-    require(items[_sku].state == State.Sold);
+    require(items[_sku].state == State.Sold, "This article was not sold");
     _;
   } 
   
   modifier shipped(uint _sku) {
-    require(items[_sku].state == State.Shipped);
+    require(items[_sku].state == State.Shipped, "This article was not shipped");
     _;
   }
   
   modifier received(uint _sku) {
-    require(items[_sku].state == State.Shipped);
+    require(items[_sku].state == State.Received, "This article was not received");
     _;
   }
 
   constructor() {
     // 1. Set the owner to the transaction sender
     // 2. Initialize the sku count to 0. Question, is this necessary?
+    // The default value of a uint type variable is 0
     owner = msg.sender;
   }
 
-  function addItem(string memory _name, uint _price) public returns (bool) {
+  function addItem(string memory _name, uint _price, address _seller) public returns (bool) {
     // 1. Create a new item and put in array
     // 2. Increment the skuCount by one
     // 3. Emit the appropriate event
     // 4. return true
+    require(bytes(_name).length != 0, "No name was received");
+    require(_price > 0, "No price was received");
 
-    // hint:
-    // items[skuCount] = Item({
-    //  name: _name, 
-    //  sku: skuCount, 
-    //  price: _price, 
-    //  state: State.ForSale, 
-    //  seller: msg.sender, 
-    //  buyer: address(0)
-    //});
-    //
-    //skuCount = skuCount + 1;
-    // emit LogForSale(skuCount);
-    // return true;
-    
     Item memory newItem = Item({
       name: _name,
       sku: skuCount,
       price: _price,
       state: State.ForSale,
-      seller: payable(msg.sender),
+      seller: payable(_seller),
       buyer: payable(address(0))
     });
 
     items[skuCount] = newItem;
-
+    
     skuCount++;
-
-    emit LogForSale(skuCount);
+    
+    emit LogForSale(skuCount - 1);
 
     return true;
   }
@@ -158,18 +147,20 @@ contract SupplyChain {
   //    - check the value after the function is called to make 
   //      sure the buyer is refunded any excess ether sent. 
   // 6. call the event associated with this function!
-  function buyItem(uint sku) public payable forSale(sku) paidEnough(items[sku].price) checkValue(sku) {
-    Item memory item = items[sku];
+  function buyItem(uint _sku, address _buyer) public payable forSale(_sku) paidEnough(items[_sku].price) checkValue(_sku) {
+    require(_buyer != address(0), "Buy Item: Zero address");
+
+    Item memory item = items[_sku];
     
     item.seller.transfer(item.price);
     
-    item.buyer = payable(msg.sender);
+    item.buyer = payable(_buyer);
 
     item.state = State.Sold;
 
-    items[sku] = item;
+    items[_sku] = item;
 
-    emit LogSold(sku);
+    emit LogSold(_sku);
   }
 
   // 1. Add modifiers to check:
@@ -177,9 +168,9 @@ contract SupplyChain {
   //    - the person calling this function is the seller. 
   // 2. Change the state of the item to shipped. 
   // 3. call the event associated with this function!
-  function shipItem(uint sku) public sold(sku) verifyCaller(items[sku].seller) {
-    items[sku].state = State.Shipped;
-    emit LogShipped(sku);
+  function shipItem(uint _sku) public sold(_sku) verifyCaller(items[_sku].seller) {
+    items[_sku].state = State.Shipped;
+    emit LogShipped(_sku);
   }
 
   // 1. Add modifiers to check 
@@ -187,9 +178,9 @@ contract SupplyChain {
   //    - the person calling this function is the buyer. 
   // 2. Change the state of the item to received. 
   // 3. Call the event associated with this function!
-  function receiveItem(uint sku) public shipped(sku) verifyCaller(items[sku].buyer) {
-    items[sku].state = State.Received;
-    emit LogReceived(sku);
+  function receiveItem(uint _sku) public shipped(_sku) verifyCaller(items[_sku].buyer) {
+    items[_sku].state = State.Received;
+    emit LogReceived(_sku);
   }
 
   // Uncomment the following code block. it is needed to run tests
